@@ -1,0 +1,10 @@
+# Core dependencies
+pydantic>=2.5.0
+pyyaml>=6.0.0
+numpy>=1.22.0
+
+# Optional LLM integration (for LLM Reviewer & Smart Policy)
+openai>=1.10.0
+
+# Testing and development
+pytest>=7.0.0
