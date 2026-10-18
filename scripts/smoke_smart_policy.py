@@ -46,7 +46,7 @@ def main() -> None:
                 arguments={"path": "/tmp/app-cache/x.txt", "content": "ok"},
                 is_read_only=False,
             ),
-            {DecisionType.ESCALATE, DecisionType.AUTO_APPROVE, DecisionType.AUTO_DENY},
+            {DecisionType.AUTO_APPROVE},
         ),
         (
             "clearly_dangerous",
@@ -56,8 +56,7 @@ def main() -> None:
                 arguments={"command": "rm -rf /"},
                 is_read_only=False,
             ),
-            # Skeleton currently escalates; final impl should prefer AUTO_DENY.
-            {DecisionType.AUTO_DENY, DecisionType.ESCALATE},
+            {DecisionType.AUTO_DENY},
         ),
     ]
 
@@ -74,7 +73,7 @@ def main() -> None:
         if not ok:
             raise SystemExit(f"Unexpected decision for case '{name}': {decision.decision}")
 
-    # Budget-awareness probe (informational for skeleton / required for final policy)
+    # Budget-awareness probe: thresholds adapt as attention becomes scarce.
     budget_empty = BudgetTracker(initial_budget=0)
     write_call = ToolCall(
         call_id="c4",
@@ -84,8 +83,9 @@ def main() -> None:
     )
     d = policy.evaluate(write_call, context, budget_empty)
     print(
-        f"[INFO] remaining_budget=0 probe -> {d.decision.value} "
-        f"(final policy may auto-deny instead of escalate)"
+        f"[INFO] remaining_budget=0 probe -> {d.decision.value}; "
+        f"approve_threshold={d.metadata.get('approve_threshold')}, "
+        f"deny_threshold={d.metadata.get('deny_threshold')}"
     )
     print("=== Done ===")
 
