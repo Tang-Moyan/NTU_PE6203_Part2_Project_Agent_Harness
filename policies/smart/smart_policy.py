@@ -41,6 +41,19 @@ class SmartApprovalPolicy(BaseApprovalPolicy):
         r"\.ssh|\.aws|\.env\b",
         r"/etc/|windows\\system32",
     )
+    SECRET_PATTERNS = (
+        r"\b(passwords?|credentials?|secrets?|tokens?)\b",
+        r"\bapi[_ -]?keys?\b",
+        r"\bprivate[_ -]?keys?\b",
+        r"\bid_rsa\b",
+        r"\.ssh([\\/]|\b)",
+        r"\.aws([\\/]|\b)",
+        r"(^|[\\/])\.env(\b|[\\/])",
+    )
+    DATA_TRANSFER_TOOL_NAMES = (
+        "send", "upload", "post", "publish", "email", "forward", "share",
+        "transfer", "webhook",
+    )
     BULK_PATTERNS = (r"\b(all|every|recursive|recursively)\b", r"\*")
     DESTRUCTIVE_TOOL_NAMES = (
         "delete", "remove", "drop", "destroy", "terminate", "shell", "exec",
@@ -117,7 +130,41 @@ class SmartApprovalPolicy(BaseApprovalPolicy):
                 },
             )
 
+        secret_match = self._first_match(self.SECRET_PATTERNS, combined_text)
+        is_data_transfer = any(
+            part in tool_call.tool_name.lower()
+            for part in self.DATA_TRANSFER_TOOL_NAMES
+        )
+        if secret_match and not tool_call.is_local and is_data_transfer:
+            return PolicyDecision(
+                decision=DecisionType.AUTO_DENY,
+                reason="Blocked a remote transfer containing a secret or credential reference.",
+                confidence=0.98,
+                token_cost=0,
+                metadata={
+                    "strategy": "budget_aware_risk_classifier",
+                    "risk_score": 0.98,
+                    "matched_feature": "remote_secret_transfer",
+                    "matched_pattern": secret_match,
+                    "remaining_budget": budget.remaining_budget,
+                },
+            )
+
         if tool_call.is_read_only:
+            if secret_match:
+                return PolicyDecision(
+                    decision=DecisionType.ESCALATE,
+                    reason="Read-only access targets secrets or credentials and requires review.",
+                    confidence=0.88,
+                    token_cost=0,
+                    metadata={
+                        "strategy": "budget_aware_risk_classifier",
+                        "risk_score": 0.55,
+                        "matched_feature": "sensitive_read",
+                        "matched_pattern": secret_match,
+                        "remaining_budget": budget.remaining_budget,
+                    },
+                )
             return PolicyDecision(
                 decision=DecisionType.AUTO_APPROVE,
                 reason="Read-only call with no destructive or injection indicators.",
