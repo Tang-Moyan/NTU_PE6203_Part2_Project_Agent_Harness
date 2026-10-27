@@ -29,6 +29,10 @@ class FullApprovePolicy(BaseApprovalPolicy):
         context: TaskContext,
         budget: BudgetTracker,
     ) -> PolicyDecision:
+        """Approve unconditionally, including when the review budget is zero.
+
+        Evaluating a baseline never consumes human attention or model tokens.
+        """
         return PolicyDecision(
             decision=DecisionType.AUTO_APPROVE,
             reason="Full-approve baseline: all tool calls are auto-approved unconditionally.",
