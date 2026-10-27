@@ -30,6 +30,10 @@ class FullEscalatePolicy(BaseApprovalPolicy):
         context: TaskContext,
         budget: BudgetTracker,
     ) -> PolicyDecision:
+        """Request review even at zero budget; the gate owns budget enforcement.
+
+        This method neither calls the reviewer nor consumes the review budget.
+        """
         return PolicyDecision(
             decision=DecisionType.ESCALATE,
             reason="Full-escalate baseline: escalating all tool calls to human reviewer.",

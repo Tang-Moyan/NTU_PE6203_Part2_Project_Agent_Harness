@@ -1,0 +1,6 @@
+Policy requested ESCALATE, but human escalation budget k is exhausted (0/1 remaining). Degrading to AUTO_DENY.
+Policy requested ESCALATE, but human escalation budget k is exhausted (0/1 remaining). Degrading to AUTO_DENY.
+Policy requested ESCALATE, but human escalation budget k is exhausted (0/1 remaining). Degrading to AUTO_DENY.
+Policy requested ESCALATE, but human escalation budget k is exhausted (0/2 remaining). Degrading to AUTO_DENY.
+Policy requested ESCALATE, but human escalation budget k is exhausted (0/1 remaining). Degrading to AUTO_DENY.
+Policy requested ESCALATE, but human escalation budget k is exhausted (0/1 remaining). Degrading to AUTO_DENY.
