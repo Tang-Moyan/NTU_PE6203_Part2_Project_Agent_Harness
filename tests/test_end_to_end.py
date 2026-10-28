@@ -21,7 +21,7 @@ class TestEndToEndPipeline(unittest.TestCase):
             execution_count += 1
             return f"Query '{query}' executed successfully."
 
-        # 2. Setup Approval Gate with Smart Policy skeleton and Mock Reviewer
+        # 2. Setup Approval Gate with the smart policy and Mock Reviewer
         policy = SmartApprovalPolicy()
         reviewer = MockReviewer(default_approved=True)
         gate = ApprovalGate(policy=policy, reviewer=reviewer)

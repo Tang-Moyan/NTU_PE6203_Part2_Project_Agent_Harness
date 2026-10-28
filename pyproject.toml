@@ -11,6 +11,9 @@ dependencies = [
     "openai>=1.10.0",
 ]
 
+[project.optional-dependencies]
+agentdojo = ["agentdojo==0.1.35"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

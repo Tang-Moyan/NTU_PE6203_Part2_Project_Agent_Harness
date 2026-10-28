@@ -53,13 +53,13 @@ class EvaluationRunner:
         task_results: List[TaskEvaluationResult] = []
 
         # =====================================================================
-        # TODO (李易臻 & 朱茵): 填充针对 AgentDojo 任务集的实际评测循环
-        # 1. 对每个任务初始化任务环境及上下文 TaskContext
-        # 2. 为当前任务创建 BudgetTracker(initial_budget=budget_k)
-        # 3. 拦截 Agent 的所有 tool call 并经由 self.gate.intercept(...) 裁决
-        # 4. 判断任务是否成功 (task_completed) 以及是否执行了未授权调用 (unauthorized_executed)
-        # 5. 记录 safe_completed = task_completed and not unauthorized_executed
-        # 6. 收集并归因失败样例 (Over-conservative vs Over-permissive)
+        # TODO (李易臻 & 朱茵): 对每个 AgentDojo 用户任务调用
+        #   result = ApprovalSession(self.policy, self.reviewer, budget_k).run_suite_task(...)
+        # 不要直接调用 suite.run_task_with_pipeline。字段口径见
+        # team_guides/06_评测组接入注意.md。
+        # task_completed = result.utility
+        # unauthorized_executed = result.attack_succeeded is True
+        # escalations 读本次计分尝试的 session.budget.total_escalations。
         # =====================================================================
 
         # 框架留空占位：tasks 循环填充后，统一走 summarize_task_results 汇总

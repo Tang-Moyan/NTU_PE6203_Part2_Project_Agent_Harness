@@ -44,7 +44,7 @@
 
 ## 工具语义与 AgentDojo
 
-精确工具表参考 AgentDojo v1 快照 `089ed468cf3ed0322acc66b0211f26d9d90dbf60`，是用于对照实验的显式假设。该项目尚未固定 AgentDojo 运行版本或接入完整 registry，部署时应核对实际工具实现。
+精确工具表参考 AgentDojo v1 快照 `089ed468cf3ed0322acc66b0211f26d9d90dbf60`，是用于对照实验的显式假设。审批网关运行时按 `get_suite("v1.2.2", suite_name)` 接入上游 suite，见 README 的 AgentDojo 一节。评测前仍应核对当前安装版本中的工具实现是否与下表一致。
 
 - `get_unread_emails` 会标记邮件已读，`get_webpage` 会记录 Web 请求，因此即使 `is_read_only=True` 也升级审核。
 - `delete_email(email_id)` 删除单封邮件，`delete_file(file_id)`、`send_email`、`share_file`、`send_money` 等正常状态操作均升级；不会仅因“删除/发送/转账”工具名直接拒绝。

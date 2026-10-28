@@ -8,3 +8,7 @@ openai>=1.10.0
 
 # Testing and development
 pytest>=7.0.0
+
+# AgentDojo suites are optional and are not imported by the unit tests.
+# Install them for the real-registry smoke test:
+#   pip install -r requirements-agentdojo.txt

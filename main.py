@@ -63,7 +63,7 @@ def run_pipeline_demo():
         ("Full-Approve Baseline (Unguarded)", FullApprovePolicy(), 0),
         ("Full-Escalate Baseline (Budget k=1)", FullEscalatePolicy(), 1),
         ("Rule-Based Heuristic (Budget k=2)", RuleBasedPolicy(), 2),
-        ("Smart Policy Skeleton (Budget k=1)", SmartApprovalPolicy(), 1),
+        ("Smart Approval Policy (Budget k=1)", SmartApprovalPolicy(), 1),
     ]
 
     for policy_name, policy_instance, initial_k in policies_to_compare:

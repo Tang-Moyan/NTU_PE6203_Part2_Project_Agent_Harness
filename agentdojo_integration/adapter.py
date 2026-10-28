@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Optional
 from core.budget import BudgetTracker
 from core.gate import ApprovalGate
 from core.models import GateAction, GateResult, TaskContext, ToolCall
+from agentdojo_integration.tool_mapper import infer_tool_flags
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +78,25 @@ def wrap_agentdojo_tool(
     interceptor: AgentDojoApprovalInterceptor,
     context_provider: Callable[[], TaskContext],
     budget_provider: Callable[[], BudgetTracker],
-    is_read_only: bool = False,
-    is_local: bool = True,
+    is_read_only: bool | None = None,
+    is_local: bool | None = None,
 ) -> Callable[..., Any]:
+    """Wrap a plain callable. Suite tools that need an environment should use ApprovalSession.
+
+    AgentDojo functions receive the task environment through ``Depends`` and must
+    be executed by ``FunctionsRuntime``. Use ``ApprovalSession.create_runtime``
+    for those. This helper is for callables that already close over their state
+    and are invoked as ``tool_func(**arguments)``.
     """
-    Helper function to wrap an individual AgentDojo tool with approval interception.
-    """
+    inferred_read_only, inferred_local = infer_tool_flags(
+        tool_name,
+        getattr(tool_func, "__doc__", "") or "",
+    )
+    if is_read_only is None:
+        is_read_only = inferred_read_only
+    if is_local is None:
+        is_local = inferred_local
+
     def wrapped(**kwargs):
         tool_call = ToolCall(
             call_id=f"call_{tool_name}",

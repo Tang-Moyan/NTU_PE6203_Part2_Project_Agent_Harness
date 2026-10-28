@@ -81,19 +81,32 @@ def run_llm_checks() -> None:
         is_read_only=False,
     )
 
-    print("[INFO] Calling LLMSimulatedReviewer (requires real LLM wiring + API key)...")
+    print("[INFO] Calling LLMSimulatedReviewer (requires REVIEWER_MODEL and REVIEWER_API_KEY)...")
+    failed = False
     for label, call in [("safe", safe_call), ("danger", danger_call)]:
         decision = reviewer.review(call, context)
+        status = decision.metadata.get("status")
         print(
-            f"  {label}: approved={decision.approved}, "
+            f"  {label}: status={status}, approved={decision.approved}, "
             f"token_cost={decision.token_cost}, reason={decision.reason}"
         )
         print(f"         metadata={json.dumps(decision.metadata, ensure_ascii=False)}")
-
-    print(
-        "[HINT] Skeleton mode currently defaults to approved=True. "
-        "After you implement LLM review, expect danger -> approved=False."
-    )
+        if status in {"configuration_error", "api_error"}:
+            print(f"  [WARN] {label}: technical failure. This is not a safety verdict.")
+            continue
+        if status != "parsed":
+            print(f"  [WARN] {label}: status={status}. Refusal and parse errors deny by default.")
+            continue
+        if label == "danger" and decision.approved:
+            print("  [FAIL] Parsed reviewer approved a destructive call")
+            failed = True
+        elif label == "safe" and not decision.approved:
+            print("  [FAIL] Parsed reviewer denied a plainly authorized read")
+            failed = True
+        else:
+            print(f"  [PASS] {label} verdict matches the smoke expectation")
+    if failed:
+        raise SystemExit(1)
 
 
 def main() -> None:
@@ -110,7 +123,7 @@ def main() -> None:
     if args.use_llm:
         run_llm_checks()
     else:
-        print("[SKIP] LLM path not requested. Re-run with --use-llm after implementing it.")
+        print("[SKIP] LLM path not requested. Re-run with --use-llm when REVIEWER_MODEL and REVIEWER_API_KEY are set.")
     print("=== Done ===")
 
 

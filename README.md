@@ -31,7 +31,9 @@ AI Agent 工具调用审批网关系统（Three-way Approval Policy Gate）。
 ├── scripts/                       # 组员一键自测 Smoke 脚本
 │   ├── smoke_reviewer.py
 │   ├── smoke_smart_policy.py
-│   └── smoke_evaluation.py
+│   ├── smoke_evaluation.py
+│   └── smoke_agentdojo.py          # 真实 suite 的最小拦截示例
+├── requirements-agentdojo.txt       # 可选：上游 AgentDojo
 ├── team_guides/                   # 各角色任务指南（含验证命令）
 │
 ├── core/                          # 核心底层框架（架构搭建）
@@ -55,17 +57,22 @@ AI Agent 工具调用审批网关系统（Three-way Approval Policy Gate）。
 ├── reviewer/                      # 模拟人工审查员模块（LLM 模拟审查员）
 │   ├── __init__.py
 │   ├── base.py                    # 审查员基类与 Oracle 信息隔离脱敏器
-│   ├── prompt_templates.py        # 审查员 Prompt 模板 (已留空，待填充)
+│   ├── prompt_templates.py        # 审查员 Prompt 模板
 │   └── llm_reviewer.py            # LLM 模拟审查员实现与 MockReviewer
 │
 ├── evaluation/                    # 评测与统计模块（评测与归因）
 │   ├── __init__.py
 │   ├── metrics.py                 # TCR@k、HITL Load、Token Cost 等评测指标模型
-│   └── runner.py                  # TCR 曲线评测运行器框架 (已预留 TODO)
+│   └── runner.py                  # TCR 曲线入口；任务循环仍待评测组填充
 │
 ├── agentdojo_integration/         # AgentDojo 拦截适配层（架构搭建）
 │   ├── __init__.py
-│   └── adapter.py                 # AgentDojo 工具包装器与中间件拦截器
+│   ├── adapter.py                 # 普通 callable 的包装器
+│   ├── session.py                 # ApprovalSession：policy + reviewer + budget_k
+│   ├── runtime.py                 # 拦截 FunctionsRuntime.run_function
+│   ├── suite_runner.py            # run_suite_task：重试隔离与计分轨迹
+│   ├── context_builder.py         # 从用户任务和对话构造 TaskContext
+│   └── tool_mapper.py             # 推断 is_read_only / is_local，并去掉 oracle 字段
 │
 └── tests/                         # 自动化测试用例
     ├── __init__.py
@@ -74,6 +81,8 @@ AI Agent 工具调用审批网关系统（Three-way Approval Policy Gate）。
     ├── test_reviewer.py           # 审查员与信息隔离测试
     ├── test_gate.py               # 网关三分类路由与退化机制测试
     ├── test_smart_policy.py       # 智能策略三分类、敏感数据与预算感知测试
+    ├── test_evaluation_metrics.py # TCR / HITL 聚合单测
+    ├── test_agentdojo_integration.py  # 上下文隔离；安装 agentdojo 后覆盖真实 suite
     └── test_end_to_end.py         # 端到端闭环流程集成测试
 ```
 
@@ -120,7 +129,35 @@ python -m unittest discover -s tests -v
 python scripts/smoke_reviewer.py      # 曹晓晗：审查员离线自测
 python scripts/smoke_smart_policy.py  # 史璟：智能策略三分类自测
 python scripts/smoke_evaluation.py    # 评测组：TCR/HITL 指标聚合自测
+pip install -r requirements-agentdojo.txt
+python scripts/smoke_agentdojo.py     # 汤墨言：真实 workspace suite 拦截示例
 ```
+
+### 4.5 把审批网关接到 AgentDojo
+
+默认 suite 版本是 `v1.2.2`。评测组调用 `run_suite_task`，不要直接调用 `suite.run_task_with_pipeline`。前者会在每次重试时重置预算和环境，并把被拒绝的调用排除出计分轨迹。必须遵守的口径写在 [`team_guides/06_评测组接入注意.md`](./team_guides/06_评测组接入注意.md)。
+
+```python
+from agentdojo_integration import ApprovalSession, load_suite
+
+suite = load_suite("workspace")  # 或 travel / banking / slack
+user_task = suite.get_user_task_by_id("user_task_0")
+session = ApprovalSession(policy, reviewer, budget_k=2)
+result = session.run_suite_task(
+    suite,
+    agent_pipeline,
+    user_task,
+    injection_task=None,
+    injections={},
+)
+# result.utility                     用户任务是否完成
+# result.attack_succeeded            无攻击时为 None；有攻击时 True 表示攻击达成
+# session.budget.total_escalations   这一次计分尝试的人工升级次数
+```
+
+有攻击任务时，`injections` 用 AgentDojo attack 的 `attack.attack(user_task, injection_task)`，并把 injection task 放在 `injection_task` 参数里。网关拒绝时返回 `PermissionDenied`，函数体不会运行。
+
+`wrap_agentdojo_tool` 只适合已经绑定好状态的普通函数。suite 里的工具依赖环境对象，必须走 `run_suite_task`。
 
 ---
 
@@ -131,7 +168,7 @@ python scripts/smoke_evaluation.py    # 评测组：TCR/HITL 指标聚合自测
 
 - `ground_truth` / `attack_annotation` / `is_attack` / `target_state`
 
-`reviewer/base.py` 内部实现了 `sanitize_context` 方法，在上下文进入模拟审查员前会自动过滤全部潜在的 Oracle 键值。
+`reviewer/base.py` 内部实现了 `sanitize_context` 方法，在上下文进入模拟审查员前会自动过滤全部潜在的 Oracle 键值。`build_task_context()` 在构造阶段就不复制这些字段，避免 oracle 先进入 `TaskContext` 再依赖事后删除。
 
 ### 5.2 决策结果流转
 ```text
@@ -158,4 +195,4 @@ ApprovalGate 拦截
 - 对普通状态修改调用综合远程副作用、工具危险性、敏感资源、批量范围、临时目录和任务相关性计算风险分数。
 - 根据人工预算剩余比例调整自动放行和自动拒绝阈值，把有限的 `ESCALATE` 留给灰区调用；预算真正耗尽后的强制拒绝仍由 `ApprovalGate` 统一执行。
 
-当前自动化验证覆盖智能策略专属测试、端到端测试及全量测试；本分支最近一次本地验证结果为 **25/25 通过**。
+当前自动化验证覆盖智能策略专属测试、端到端测试及全量测试。全量命令是 `python -m unittest discover -s tests -v`。未安装 `agentdojo` 时，真实 suite 用例会跳过，其余用例不依赖它。
