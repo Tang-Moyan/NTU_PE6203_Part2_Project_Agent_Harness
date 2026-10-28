@@ -50,7 +50,7 @@ AI Agent 工具调用审批网关系统（Three-way Approval Policy Gate）。
 │   │   └── rule_based.py          # 规则/启发式基线（只读放行、危险命令阻断）
 │   └── smart/                     # 智能审批策略（智能策略开发）
 │       ├── __init__.py
-│       └── smart_policy.py        # 智能三分类策略 (LLM/分类器驱动，已预留 TODO)
+│       └── smart_policy.py        # 预算感知的确定性风险分类器（三分类已实现）
 │
 ├── reviewer/                      # 模拟人工审查员模块（LLM 模拟审查员）
 │   ├── __init__.py
@@ -73,6 +73,7 @@ AI Agent 工具调用审批网关系统（Three-way Approval Policy Gate）。
     ├── test_baselines.py          # 基线策略单元测试
     ├── test_reviewer.py           # 审查员与信息隔离测试
     ├── test_gate.py               # 网关三分类路由与退化机制测试
+    ├── test_smart_policy.py       # 智能策略三分类、敏感数据与预算感知测试
     └── test_end_to_end.py         # 端到端闭环流程集成测试
 ```
 
@@ -146,3 +147,15 @@ ApprovalGate 拦截
               ├── 预算 k > 0 ──> 消耗 1 点预算 ──> Reviewer 审查 ──> EXECUTE / BLOCK
               └── 预算 k == 0 ──> 降级机制触发 ──> 自动转为 AUTO_DENY ──> BLOCK
 ```
+
+### 5.3 智能审批策略当前实现
+
+`SmartApprovalPolicy` 当前采用**确定性、无需 Oracle 信息的风险分类器**，暂不调用外部 LLM，因此策略自身的 `token_cost` 为 `0`。主要行为如下：
+
+- 明显安全的只读调用自动放行；但读取 `.ssh`、`.aws`、`.env`、密码、Token、API Key 或私钥等敏感内容时升级人工审查。
+- `rm -rf`、数据库删除/清空、强制推送、提示注入等明确危险行为自动拒绝。
+- 将凭据或秘密通过上传、发送、发布、Webhook 等远程工具外传时自动拒绝。
+- 对普通状态修改调用综合远程副作用、工具危险性、敏感资源、批量范围、临时目录和任务相关性计算风险分数。
+- 根据人工预算剩余比例调整自动放行和自动拒绝阈值，把有限的 `ESCALATE` 留给灰区调用；预算真正耗尽后的强制拒绝仍由 `ApprovalGate` 统一执行。
+
+当前自动化验证覆盖智能策略专属测试、端到端测试及全量测试；本分支最近一次本地验证结果为 **25/25 通过**。
