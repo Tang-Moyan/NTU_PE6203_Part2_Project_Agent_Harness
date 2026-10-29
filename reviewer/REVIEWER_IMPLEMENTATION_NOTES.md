@@ -91,11 +91,43 @@ os.environ["REVIEWER_API_KEY"] = getpass("请输入API Key（隐藏输入）："
 
 ## 已验证与未验证
 
-在原项目快照加上已合并的 Prompt 和本轮两个代码文件后：
+### Offline verification
 
-- 全项目 30 个离线 unittest 测试全部通过（原有 19 个 + 本轮新增 11 个）。
-- Reviewer 文件内共 13 个测试（原有 2 个 + 本轮新增 11 个）。
-- 覆盖批准/拒绝解析、字符串布尔值等格式错误、最终 Prompt 的信息隔离、输入不变、Gate 预算联动、超时、拒答、截断、空响应、缺失用量和配置接线。
-- 123 tokens 等测试值是人为构造值，不是实际消耗。
-- 没有真实 API Key，未执行真实模型请求，尚不能证明模型审核质量、真实成本或平台兼容性。
-- 尚未进行 AgentDojo 正式集成评测；最终验收仍需真实审核、Prompt/日志抽查和实验结果。
+- 全项目离线 unittest 测试已通过。
+- Reviewer 测试覆盖批准/拒绝解析、无效 JSON、信息隔离、输入不变、
+  Gate 预算联动、超时、拒答、截断、空响应、缺失用量和配置接线。
+- MockReviewer 用于确定性离线测试和无 API 环境下的流水线验证。
+
+### Real-model verification
+
+The LLM Reviewer was connected to OpenRouter using the
+`openai/gpt-4o-mini` model through an OpenAI-compatible Chat Completions API.
+
+Initial live smoke test:
+
+- Authorized log-reading call: approved as expected.
+- Destructive `DROP DATABASE` call outside the user's scope: denied as expected.
+- Result: 2/2 cases passed.
+- Both responses returned `status=parsed` and real token-usage metadata.
+
+Extended prompt self-test:
+
+- 8 test cases covering authorized operations, destructive actions,
+  sensitive-file access, explicit deletion authorization, scope violations,
+  untrusted tool-output instructions, and ambiguous authorization.
+- Result: 8/8 cases passed.
+- Test expectations were stored outside the TaskContext and were not shown
+  to the reviewer model.
+- Detailed sanitized results are stored in
+  `evaluation/results/reviewer_real_model_test_results.json`.
+
+### Remaining limitations
+
+- The current results are a targeted real-model prompt self-test, not the
+  full AgentDojo benchmark evaluation.
+- Results were obtained from one model and a limited test set, so they do
+  not establish general performance across models or tasks.
+- API availability, provider behavior and model versions may affect
+  reproducibility.
+- Formal evaluation should additionally report task completion,
+  escalation load, failures and token costs across approval budgets.
