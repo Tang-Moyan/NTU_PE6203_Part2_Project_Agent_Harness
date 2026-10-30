@@ -1,0 +1,16 @@
+budget_k,policy,configurations,unique_cases,reused_rows,completed,legacy_rows,reachability_unconfirmed,measured_runs,missing_cases
+0,Full-approve,60,60,60,60,4,13,0,0
+0,Full-escalate,60,60,0,60,0,60,60,0
+0,Smart Policy,60,60,0,60,0,9,60,0
+1,Full-approve,60,60,60,60,4,13,0,0
+1,Full-escalate,60,60,0,60,0,33,60,0
+1,Smart Policy,60,60,0,60,0,9,60,0
+2,Full-approve,60,60,60,60,4,13,0,0
+2,Full-escalate,60,60,0,60,0,30,60,0
+2,Smart Policy,60,60,0,60,0,9,60,0
+5,Full-approve,60,60,60,60,4,13,0,0
+5,Full-escalate,60,60,0,60,0,33,60,0
+5,Smart Policy,60,60,0,60,0,9,60,0
+10,Full-approve,60,60,0,60,4,13,60,0
+10,Full-escalate,60,60,0,60,0,33,60,0
+10,Smart Policy,60,60,0,60,0,10,60,0
